@@ -1,6 +1,8 @@
-let menuBtn = document.querySelector(".menu-btn");
-let menuBtnClose = document.querySelector(".menu-close");
-let menu = document.querySelector(".menu");
+const menuBtn = document.querySelector(".menu-btn");
+const menuBtnClose = document.querySelector(".menu-close");
+const menu = document.querySelector(".menu");
+const menuItems = document.querySelectorAll(".menu-nav__item");
+
 menuBtn.addEventListener("click", function () {
   menu.classList.toggle("active");
 });
@@ -9,27 +11,24 @@ menuBtnClose.addEventListener("click", function () {
   menu.classList.toggle("active");
 });
 
+menu.addEventListener("click", function (e) {
+  if (e.target === menu) {
+    menu.classList.remove("active");
+  }
+});
+
+menuItems.forEach(function (menuItem) {
+  menuItem.addEventListener("click", function () {
+    menu.classList.remove("active");
+  });
+});
+
 const regForm = document.forms.regForm;
 const firstnameField = regForm.firstname;
 const emailField = regForm.email;
 
-const containsOnlyRussianLetters = (string) => {
-  return /^[а-я]+$/i.test(string);
-};
-const isEmailValid = (email) => {
-  return /^[a-z][a-z._0-9]+@[a-z]+\.[a-z]{2,3}$/i.test(email);
-};
-const containsPunctiationMark = (string) => {
-  return /[.,?\/#!$%\^&\*;:{}=\-_`~()]/.test(string);
-};
-
-const isFormValid = () => {
-  const errorFields = document.querySelectorAll(".error");
-
-  return [...errorFields].every((errorField) => {
-    return window.getComputedStyle(errorField).display === "none";
-  });
-};
+const containsOnlyRussianLetters = (string) => /^[а-я]+$/i.test(string);
+const isEmailValid = (email) => /^[a-z][a-z._0-9]+@[a-z]+\.[a-z]{2,3}$/i.test(email);
 
 const toggleErrorMessage = ({ condition, errorMessages, errorType }) => {
   if (condition) {
@@ -39,7 +38,34 @@ const toggleErrorMessage = ({ condition, errorMessages, errorType }) => {
   }
 };
 
-regForm.addEventListener("submit", (e) => {
+const isFormValid = () => {
+  const errorMessages = document.querySelectorAll(".error");
+  return [...errorMessages].every(
+    (errorMessage) => window.getComputedStyle(errorMessage).display === "none"
+  );
+};
+
+const showNotification = (message) => {
+  const notification = document.createElement("div");
+  notification.className = "notification";
+
+  const messageText = document.createElement("p");
+  messageText.textContent = message;
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "close-button";
+  closeButton.textContent = "×";
+
+  closeButton.addEventListener("click", () => {
+    notification.remove();
+  });
+
+  notification.appendChild(messageText);
+  notification.appendChild(closeButton);
+  document.body.appendChild(notification);
+};
+
+regForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const firstnameErrorMessages = firstnameField.parentElement.children;
@@ -60,28 +86,36 @@ regForm.addEventListener("submit", (e) => {
     errorType: "emailError",
   });
 
+  if (!isFormValid()) {
+    return;
+  }
+
   const formData = new FormData(regForm);
   const firstname = formData.get("firstname");
   const email = formData.get("email");
   const content = formData.get("content");
 
-  const postData = async (
-    url = "https://jsonplaceholder.typicode.com/todos/1",
-    data = { name: firstname, email, content }
-  ) => {
+  const postData = async (url, data) => {
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify(data),
     });
-    return response.json();
+
+    if (response.ok) {
+      return response.json();
+    } else {
+      return null;
+    }
   };
 
-  if (regForm.checkValidity()) {
-    postData();
-    regForm.reset();
-  }
+  const url = "https://jsonplaceholder.typicode.com/todos/1";
+  const data = { name: firstname, email, content };
+
+  await postData(url, data);
+
+  regForm.reset();
+  showNotification("Форма отправлена!");
 });
